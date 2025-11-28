@@ -43,6 +43,7 @@
                 <tb:TaskbarIcon.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Favorite Sites (Ctrl+Space)" Click="TrayMenu_FavoriteSites_Click" />
+                        <MenuItem Header="URL History" Click="TrayMenu_UrlHistory_Click" />
                         <Separator />
                         <MenuItem Header="Open Settings" Click="TrayMenu_OpenSettings_Click" />
                         <Separator />

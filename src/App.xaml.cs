@@ -14,6 +14,7 @@ public partial class App : Application
     private TaskbarIcon? _trayIcon;
     private MainWindow? _mainWindow;
     private FavoriteSitesWindow? _favoriteSitesWindow;
+    private UrlHistoryWindow? _urlHistoryWindow;
     private CancellationTokenSource? _cts;
     private IHotkeyService? _hotkeyService;
 
@@ -41,10 +42,12 @@ public partial class App : Application
         services.AddSingleton<IStartupService, StartupService>();
         services.AddSingleton<IFaviconService, FaviconService>();
         services.AddSingleton<IHotkeyService, HotkeyService>();
+        services.AddSingleton<IUrlHistoryService, UrlHistoryService>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<FavoriteSitesViewModel>();
+        services.AddTransient<UrlHistoryViewModel>();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -68,6 +71,10 @@ public partial class App : Application
 
         // Load configuration
         await config.LoadAsync();
+
+        // Load URL history
+        var history = _serviceProvider.GetRequiredService<IUrlHistoryService>();
+        await history.LoadAsync();
 
         // Check for URL argument
         var urlArg = e.Args.FirstOrDefault(a => 
@@ -196,6 +203,7 @@ public partial class App : Application
 
     // XAML tray menu event handlers
     private void TrayMenu_FavoriteSites_Click(object sender, RoutedEventArgs e) => ShowFavoriteSites();
+    private void TrayMenu_UrlHistory_Click(object sender, RoutedEventArgs e) => ShowUrlHistory();
     private void TrayMenu_OpenSettings_Click(object sender, RoutedEventArgs e) => ShowMainWindow();
     private void TrayMenu_Exit_Click(object sender, RoutedEventArgs e) => ExitApplication();
 
@@ -274,6 +282,26 @@ public partial class App : Application
     public void HideFavoriteSites()
     {
         _favoriteSitesWindow?.Hide();
+    }
+
+    public void ShowUrlHistory()
+    {
+        if (_urlHistoryWindow == null || !_urlHistoryWindow.IsLoaded)
+        {
+            _urlHistoryWindow = new UrlHistoryWindow
+            {
+                DataContext = _serviceProvider.GetRequiredService<UrlHistoryViewModel>()
+            };
+            _urlHistoryWindow.Closed += (_, _) => _urlHistoryWindow = null;
+        }
+
+        _urlHistoryWindow.Show();
+        _urlHistoryWindow.Activate();
+    }
+
+    public void HideUrlHistory()
+    {
+        _urlHistoryWindow?.Hide();
     }
 
     private async Task ProcessUrlAsync(string url)

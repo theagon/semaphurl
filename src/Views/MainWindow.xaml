@@ -399,6 +399,24 @@
                         </StackPanel>
                     </ui:CardExpander>
 
+                    <!-- URL History Section -->
+                    <ui:CardExpander Header="URL History" IsExpanded="False"
+                                     Icon="{ui:SymbolIcon History24}"
+                                     Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,12"
+                                       Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}">
+                                <Run Text="View all URLs that have been routed through SemaphURL. Right-click on any entry to quickly create a routing rule." />
+                            </TextBlock>
+
+                            <ui:Button Content="Open URL History"
+                                       Icon="{ui:SymbolIcon History24}"
+                                       Command="{Binding OpenUrlHistoryCommand}"
+                                       Appearance="Primary"
+                                       HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </ui:CardExpander>
+
                 </StackPanel>
 
                 <!-- Add Rule Dialog Overlay -->

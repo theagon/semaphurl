@@ -19,11 +19,13 @@ public class RoutingService : IRoutingService
 {
     private readonly IConfigurationService _config;
     private readonly ILoggingService _logger;
+    private readonly IUrlHistoryService _history;
 
-    public RoutingService(IConfigurationService config, ILoggingService logger)
+    public RoutingService(IConfigurationService config, ILoggingService logger, IUrlHistoryService history)
     {
         _config = config;
         _logger = logger;
+        _history = history;
     }
 
     public RoutingResult Route(string url)
@@ -141,16 +143,19 @@ public class RoutingService : IRoutingService
         }
     }
 
-    public Task<bool> ExecuteRoutingAsync(RoutingResult result)
+    public async Task<bool> ExecuteRoutingAsync(RoutingResult result)
     {
         if (!result.Success)
         {
             _logger.LogError($"Routing failed: {result.ErrorMessage}");
-            return Task.FromResult(false);
+            return false;
         }
 
         try
         {
+            string browserName;
+            string browserPath;
+            
             if (result.IsSystemFallback)
             {
                 // Open via system shell (default browser)
@@ -160,6 +165,9 @@ public class RoutingService : IRoutingService
                     FileName = result.OriginalUrl,
                     UseShellExecute = true
                 });
+                
+                browserName = "System Default";
+                browserPath = "System";
             }
             else
             {
@@ -172,7 +180,10 @@ public class RoutingService : IRoutingService
                         FileName = result.OriginalUrl,
                         UseShellExecute = true
                     });
-                    return Task.FromResult(true);
+                    
+                    // Record history with fallback browser
+                    await RecordHistoryAsync(result.OriginalUrl, "System", "System Default (Fallback)", result.MatchedRule?.Name);
+                    return true;
                 }
 
                 _logger.LogRouting(result.OriginalUrl, result.MatchedRule?.Name, result.BrowserPath);
@@ -183,9 +194,15 @@ public class RoutingService : IRoutingService
                     Arguments = result.Arguments,
                     UseShellExecute = false
                 });
+                
+                browserPath = result.BrowserPath;
+                browserName = Path.GetFileNameWithoutExtension(result.BrowserPath);
             }
 
-            return Task.FromResult(true);
+            // Record to history
+            await RecordHistoryAsync(result.OriginalUrl, browserPath, browserName, result.MatchedRule?.Name);
+            
+            return true;
         }
         catch (Exception ex)
         {
@@ -200,13 +217,28 @@ public class RoutingService : IRoutingService
                     UseShellExecute = true
                 });
                 _logger.LogInfo($"Opened URL via system fallback: {result.OriginalUrl}");
-                return Task.FromResult(true);
+                
+                // Record history with fallback
+                await RecordHistoryAsync(result.OriginalUrl, "System", "System Default (Fallback)", null);
+                return true;
             }
             catch (Exception fallbackEx)
             {
                 _logger.LogError("System fallback also failed", fallbackEx);
-                return Task.FromResult(false);
+                return false;
             }
+        }
+    }
+
+    private async Task RecordHistoryAsync(string url, string browserPath, string browserName, string? ruleName)
+    {
+        try
+        {
+            await _history.AddEntryAsync(url, browserPath, browserName, ruleName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to record URL history", ex);
         }
     }
 }

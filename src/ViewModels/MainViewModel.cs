@@ -502,6 +502,12 @@ public partial class MainViewModel : ObservableObject
         App.Instance.ShowFavoriteSites();
     }
 
+    [RelayCommand]
+    private void OpenUrlHistory()
+    {
+        App.Instance.ShowUrlHistory();
+    }
+
     private void RefreshRegistrationStatus()
     {
         IsRegistered = _registration.IsRegistered;
