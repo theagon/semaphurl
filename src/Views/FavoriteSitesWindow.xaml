@@ -1,0 +1,354 @@
+<Window x:Class="SemaphURL.Views.FavoriteSitesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:vm="clr-namespace:SemaphURL.ViewModels"
+        Title="Favorite Sites"
+        Width="600" Height="500"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        d:DataContext="{d:DesignInstance vm:FavoriteSitesViewModel}"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Deactivated="Window_Deactivated"
+        KeyDown="Window_KeyDown">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        
+        <!-- Inverse boolean to visibility -->
+        <Style x:Key="InverseBoolToVisStyle" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Skeleton shimmer animation brush -->
+        <LinearGradientBrush x:Key="SkeletonShimmerBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#20FFFFFF" Offset="0" />
+            <GradientStop Color="#40FFFFFF" Offset="0.5" />
+            <GradientStop Color="#20FFFFFF" Offset="1" />
+        </LinearGradientBrush>
+
+        <!-- Skeleton animation storyboard -->
+        <Storyboard x:Key="SkeletonAnimation" RepeatBehavior="Forever">
+            <DoubleAnimation
+                Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                From="-100" To="100"
+                Duration="0:0:1.5" />
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- Semi-transparent backdrop -->
+    <Border Background="#E0181825"
+            CornerRadius="16"
+            BorderBrush="#40FFFFFF"
+            BorderThickness="1">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="Favorite Sites"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           Foreground="White" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <ui:Button Icon="{ui:SymbolIcon Add24}"
+                               ToolTip="Add new site"
+                               Command="{Binding StartAddNewCommand}"
+                               Appearance="Secondary"
+                               Margin="0,0,8,0" />
+                    <ui:Button Icon="{ui:SymbolIcon Dismiss24}"
+                               ToolTip="Close (Esc)"
+                               Command="{Binding CloseCommand}"
+                               Appearance="Secondary" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Sites Grid (Main View) -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                
+                <ItemsControl ItemsSource="{Binding Sites}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:FavoriteSiteViewModel}">
+                            <Border Margin="8"
+                                    Padding="12"
+                                    Background="#20FFFFFF"
+                                    CornerRadius="12"
+                                    Cursor="Hand"
+                                    MouseEnter="SiteCard_MouseEnter"
+                                    MouseLeave="SiteCard_MouseLeave"
+                                    MouseLeftButtonUp="SiteCard_Click">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#40FFFFFF" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Edit" Command="{Binding EditCommand}" />
+                                        <MenuItem Header="Delete" Command="{Binding DeleteCommand}" />
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <StackPanel HorizontalAlignment="Center">
+                                    <!-- Icon Container -->
+                                    <Grid Width="64" Height="64" Margin="0,0,0,8">
+                                        <!-- Skeleton Loader (shown when loading) -->
+                                        <Border CornerRadius="12"
+                                                Background="#30FFFFFF"
+                                                ClipToBounds="True"
+                                                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                                            <!-- Shimmer effect -->
+                                            <Border>
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform />
+                                                </Border.RenderTransform>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                            From="-64" To="64"
+                                                                            Duration="0:0:1" />
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0" />
+                                                        <GradientStop Color="#40FFFFFF" Offset="0.5" />
+                                                        <GradientStop Color="Transparent" Offset="1" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Border>
+                                        
+                                        <!-- Actual Icon (shown when loaded) -->
+                                        <Border CornerRadius="12"
+                                                Background="#30FFFFFF">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Image Source="{Binding Icon}"
+                                                   Width="48" Height="48"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                    </Grid>
+                                    
+                                    <!-- Name Container -->
+                                    <Grid Height="18" MaxWidth="100">
+                                        <!-- Skeleton for name (shown when loading) -->
+                                        <Border CornerRadius="4"
+                                                Background="#30FFFFFF"
+                                                Width="60"
+                                                ClipToBounds="True"
+                                                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                                            <Border>
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform />
+                                                </Border.RenderTransform>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                            From="-60" To="60"
+                                                                            Duration="0:0:1"
+                                                                            BeginTime="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0" />
+                                                        <GradientStop Color="#40FFFFFF" Offset="0.5" />
+                                                        <GradientStop Color="Transparent" Offset="1" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Border>
+                                        
+                                        <!-- Actual Name (shown when loaded) -->
+                                        <TextBlock Text="{Binding Name}"
+                                                   Foreground="White"
+                                                   FontSize="13"
+                                                   TextAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Empty State -->
+            <StackPanel Grid.Row="1"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="{Binding Sites.Count, Converter={StaticResource BoolToVis}, ConverterParameter=Inverse}">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Sites.Count}" Value="0" />
+                                    <Condition Binding="{Binding IsEditing}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <ui:SymbolIcon Symbol="Star24"
+                               FontSize="48"
+                               Foreground="#60FFFFFF"
+                               Margin="0,0,0,16" />
+                <TextBlock Text="No favorite sites yet"
+                           Foreground="#80FFFFFF"
+                           FontSize="16"
+                           TextAlignment="Center" />
+                <TextBlock Text="Click + to add your first site"
+                           Foreground="#60FFFFFF"
+                           FontSize="13"
+                           TextAlignment="Center"
+                           Margin="0,8,0,0" />
+            </StackPanel>
+
+            <!-- Edit/Add Form -->
+            <Border Grid.Row="1"
+                    Background="#30000000"
+                    CornerRadius="12"
+                    Padding="24"
+                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}">
+                <StackPanel VerticalAlignment="Center"
+                            MaxWidth="350">
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               Margin="0,0,0,20">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Edit Site" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAddingNew}" Value="True">
+                                        <Setter Property="Text" Value="Add New Site" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="Name"
+                               Foreground="#B0FFFFFF"
+                               Margin="0,0,0,8" />
+                    <ui:TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                                PlaceholderText="e.g., YouTube"
+                                Margin="0,0,0,16" />
+
+                    <TextBlock Text="URL"
+                               Foreground="#B0FFFFFF"
+                               Margin="0,0,0,8" />
+                    <ui:TextBox Text="{Binding EditUrl, UpdateSourceTrigger=PropertyChanged}"
+                                PlaceholderText="e.g., https://youtube.com"
+                                Margin="0,0,0,24" />
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel"
+                                   Command="{Binding CancelEditCommand}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,8,0" />
+                        <ui:Button Content="Save"
+                                   Command="{Binding ConfirmEditCommand}"
+                                   Appearance="Primary" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Footer hint -->
+            <TextBlock Grid.Row="2"
+                       Text="Press Ctrl+Space to toggle • Esc to close • Click outside to dismiss"
+                       Foreground="#60FFFFFF"
+                       FontSize="11"
+                       TextAlignment="Center"
+                       Margin="0,16,0,0" />
+        </Grid>
+    </Border>
+</Window>
+

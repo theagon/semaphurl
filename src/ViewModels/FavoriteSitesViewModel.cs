@@ -1,0 +1,242 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using SemaphURL.Models;
+using SemaphURL.Services;
+
+namespace SemaphURL.ViewModels;
+
+/// <summary>
+/// ViewModel for the Favorite Sites popup window
+/// </summary>
+public partial class FavoriteSitesViewModel : ObservableObject
+{
+    private readonly IConfigurationService _config;
+    private readonly IRoutingService _routing;
+    private readonly IFaviconService _favicon;
+    private readonly ILoggingService _logger;
+
+    [ObservableProperty]
+    private bool _isEditing;
+
+    [ObservableProperty]
+    private bool _isAddingNew;
+
+    [ObservableProperty]
+    private string _editName = string.Empty;
+
+    [ObservableProperty]
+    private string _editUrl = string.Empty;
+
+    [ObservableProperty]
+    private FavoriteSiteViewModel? _editingSite;
+
+    public ObservableCollection<FavoriteSiteViewModel> Sites { get; } = [];
+
+    public FavoriteSitesViewModel(
+        IConfigurationService config,
+        IRoutingService routing,
+        IFaviconService favicon,
+        ILoggingService logger)
+    {
+        _config = config;
+        _routing = routing;
+        _favicon = favicon;
+        _logger = logger;
+
+        LoadSites();
+    }
+
+    public async void LoadSites()
+    {
+        Sites.Clear();
+
+        // Initialize default sites if empty
+        if (_config.Config.FavoriteSites.Count == 0)
+        {
+            InitializeDefaultSites();
+            await _config.SaveAsync();
+        }
+
+        // First, add all sites with loading state (skeleton)
+        var siteViewModels = new List<FavoriteSiteViewModel>();
+        foreach (var site in _config.Config.FavoriteSites.OrderBy(s => s.Order))
+        {
+            var vm = new FavoriteSiteViewModel(
+                site,
+                icon: null, // No icon yet - will show skeleton
+                onOpen: OpenSite,
+                onEdit: StartEditSite,
+                onDelete: DeleteSite);
+            Sites.Add(vm);
+            siteViewModels.Add(vm);
+        }
+
+        // Then load icons asynchronously
+        foreach (var vm in siteViewModels)
+        {
+            _ = LoadIconAsync(vm);
+        }
+    }
+
+    private async Task LoadIconAsync(FavoriteSiteViewModel vm)
+    {
+        try
+        {
+            var icon = await _favicon.GetFaviconAsync(vm.Url);
+            vm.UpdateIcon(icon);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to load favicon for {vm.Url}", ex);
+            vm.UpdateIcon(null); // This will also set IsLoading = false
+        }
+    }
+
+    private void InitializeDefaultSites()
+    {
+        var defaults = new[]
+        {
+            new FavoriteSite("YouTube", "https://youtube.com", 0),
+            new FavoriteSite("GitHub", "https://github.com", 1),
+            new FavoriteSite("Reddit", "https://reddit.com", 2),
+            new FavoriteSite("X (Twitter)", "https://x.com", 3),
+            new FavoriteSite("Facebook", "https://facebook.com", 4),
+            new FavoriteSite("Instagram", "https://instagram.com", 5),
+            new FavoriteSite("LinkedIn", "https://linkedin.com", 6),
+            new FavoriteSite("Stack Overflow", "https://stackoverflow.com", 7),
+        };
+
+        _config.Config.FavoriteSites = defaults.ToList();
+    }
+
+    private void OpenSite(FavoriteSiteViewModel siteVm)
+    {
+        try
+        {
+            var result = _routing.Route(siteVm.Url);
+            _ = _routing.ExecuteRoutingAsync(result);
+            _logger.LogInfo($"Opened favorite site: {siteVm.Name} -> {siteVm.Url}");
+            
+            // Close the window after opening
+            App.Instance.HideFavoriteSites();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to open favorite site: {siteVm.Url}", ex);
+        }
+    }
+
+    private void StartEditSite(FavoriteSiteViewModel siteVm)
+    {
+        EditingSite = siteVm;
+        EditName = siteVm.Name;
+        EditUrl = siteVm.Url;
+        IsAddingNew = false;
+        IsEditing = true;
+    }
+
+    [RelayCommand]
+    private void StartAddNew()
+    {
+        EditingSite = null;
+        EditName = string.Empty;
+        EditUrl = string.Empty;
+        IsAddingNew = true;
+        IsEditing = true;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmEdit()
+    {
+        if (string.IsNullOrWhiteSpace(EditName) || string.IsNullOrWhiteSpace(EditUrl))
+            return;
+
+        // Ensure URL has protocol
+        var url = EditUrl.Trim();
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            url = "https://" + url;
+        }
+
+        if (IsAddingNew)
+        {
+            // Add new site
+            var newSite = new FavoriteSite(EditName.Trim(), url, Sites.Count);
+            _config.Config.FavoriteSites.Add(newSite);
+
+            // Add with loading state first
+            var vm = new FavoriteSiteViewModel(
+                newSite,
+                icon: null,
+                onOpen: OpenSite,
+                onEdit: StartEditSite,
+                onDelete: DeleteSite);
+            Sites.Add(vm);
+            
+            // Load icon asynchronously
+            _ = LoadIconAsync(vm);
+        }
+        else if (EditingSite != null)
+        {
+            var urlChanged = !EditingSite.Url.Equals(url, StringComparison.OrdinalIgnoreCase);
+            
+            // Update existing site
+            EditingSite.Name = EditName.Trim();
+            EditingSite.Url = url;
+
+            // Update the model in config
+            var configSite = _config.Config.FavoriteSites.FirstOrDefault(s => s.Id == EditingSite.Id);
+            if (configSite != null)
+            {
+                configSite.Name = EditName.Trim();
+                configSite.Url = url;
+            }
+
+            // Update icon if URL changed
+            if (urlChanged)
+            {
+                EditingSite.IsLoading = true;
+                _ = LoadIconAsync(EditingSite);
+            }
+        }
+
+        await _config.SaveAsync();
+        CancelEdit();
+    }
+
+    [RelayCommand]
+    private void CancelEdit()
+    {
+        IsEditing = false;
+        IsAddingNew = false;
+        EditingSite = null;
+        EditName = string.Empty;
+        EditUrl = string.Empty;
+    }
+
+    private async void DeleteSite(FavoriteSiteViewModel siteVm)
+    {
+        Sites.Remove(siteVm);
+        _config.Config.FavoriteSites.RemoveAll(s => s.Id == siteVm.Id);
+
+        // Reorder remaining sites
+        for (int i = 0; i < Sites.Count; i++)
+        {
+            Sites[i].Order = i;
+            var configSite = _config.Config.FavoriteSites.FirstOrDefault(s => s.Id == Sites[i].Id);
+            if (configSite != null)
+                configSite.Order = i;
+        }
+
+        await _config.SaveAsync();
+    }
+
+    [RelayCommand]
+    private void Close()
+    {
+        App.Instance.HideFavoriteSites();
+    }
+}
+
