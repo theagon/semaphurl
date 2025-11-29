@@ -383,21 +383,50 @@ public partial class App : Application
     {
         var routing = _serviceProvider.GetRequiredService<IRoutingService>();
         var config = _serviceProvider.GetRequiredService<IConfigurationService>();
+        var browserDiscovery = _serviceProvider.GetRequiredService<IBrowserDiscoveryService>();
         
         var result = routing.Route(url);
         var success = await routing.ExecuteRoutingAsync(result);
 
         if (config.Config.ShowNotifications && _trayIcon != null)
         {
-            var browserName = string.IsNullOrEmpty(result.BrowserPath) 
-                ? "System Default" 
-                : System.IO.Path.GetFileNameWithoutExtension(result.BrowserPath);
+            var browserName = GetBrowserDisplayName(result.BrowserPath, browserDiscovery);
             
             _trayIcon.ShowNotification(
                 "URL Routed",
                 $"{result.GetRuleDescription()}\n→ {browserName}",
                 H.NotifyIcon.Core.NotificationIcon.Info);
         }
+    }
+
+    private static string GetBrowserDisplayName(string? browserPath, IBrowserDiscoveryService browserDiscovery)
+    {
+        if (string.IsNullOrEmpty(browserPath))
+            return "System Default";
+
+        // Try to find the browser in installed browsers list
+        var installedBrowsers = browserDiscovery.GetInstalledBrowsers();
+        var browser = installedBrowsers.FirstOrDefault(b => 
+            b.ExePath.Equals(browserPath, StringComparison.OrdinalIgnoreCase));
+
+        if (browser != null)
+            return browser.Name;
+
+        // Fallback to friendly name based on exe name
+        var fileName = System.IO.Path.GetFileNameWithoutExtension(browserPath)?.ToLowerInvariant();
+        return fileName switch
+        {
+            "chrome" => "Google Chrome",
+            "msedge" => "Microsoft Edge",
+            "firefox" => "Mozilla Firefox",
+            "brave" => "Brave",
+            "opera" => "Opera",
+            "vivaldi" => "Vivaldi",
+            "browser" => "Yandex Browser",
+            "iexplore" => "Internet Explorer",
+            "safari" => "Safari",
+            _ => System.IO.Path.GetFileNameWithoutExtension(browserPath) ?? "Browser"
+        };
     }
 
     public void ShowMainWindow()
