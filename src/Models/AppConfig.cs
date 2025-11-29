@@ -14,5 +14,6 @@ public class AppConfig
     public bool StartWithWindows { get; set; } = false;
     public List<FavoriteSite> FavoriteSites { get; set; } = [];
     public string FavoriteSitesHotkey { get; set; } = "Ctrl+Space";
+    public string ClipboardUrlHotkey { get; set; } = "Ctrl+Shift+Space";
 }
 

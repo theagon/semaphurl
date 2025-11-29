@@ -379,6 +379,51 @@
                         </StackPanel>
                     </ui:CardExpander>
 
+                    <!-- Keyboard Shortcuts Section -->
+                    <ui:CardExpander Header="Keyboard Shortcuts" IsExpanded="False"
+                                     Icon="{ui:SymbolIcon Keyboard24}"
+                                     Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
+                                       Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}">
+                                <Run Text="Configure global keyboard shortcuts. Use format: Ctrl+Shift+Space, Alt+F1, etc." />
+                            </TextBlock>
+
+                            <ui:CardControl Margin="0,0,0,12">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Favorite Sites Hotkey" />
+                                        <TextBlock Text="Opens the Favorite Sites quick launch panel"
+                                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                                   FontSize="12" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:TextBox Text="{Binding FavoriteSitesHotkey, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="e.g., Ctrl+Space"
+                                            MinWidth="150" />
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,12">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Clipboard URL Hotkey" />
+                                        <TextBlock Text="Opens URL from clipboard in the appropriate browser"
+                                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                                   FontSize="12" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:TextBox Text="{Binding ClipboardUrlHotkey, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="e.g., Ctrl+Shift+Space"
+                                            MinWidth="150" />
+                            </ui:CardControl>
+
+                            <TextBlock Text="Note: Changes take effect after saving."
+                                       Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                       FontSize="11"
+                                       FontStyle="Italic" />
+                        </StackPanel>
+                    </ui:CardExpander>
+
                     <!-- Favorite Sites Section -->
                     <ui:CardExpander Header="Favorite Sites" IsExpanded="False"
                                      Icon="{ui:SymbolIcon Star24}"
@@ -386,9 +431,9 @@
                         <StackPanel>
                             <TextBlock TextWrapping="Wrap" Margin="0,0,0,12"
                                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}">
-                                <Run Text="Quick access to your favorite sites. Press " />
-                                <Run Text="Ctrl+Space" FontWeight="SemiBold" />
-                                <Run Text=" anywhere to open the Favorite Sites panel." />
+                                <Run Text="Quick access to your favorite sites. Press the hotkey (" />
+                                <Run Text="{Binding FavoriteSitesHotkey}" FontWeight="SemiBold" />
+                                <Run Text=") anywhere to open the Favorite Sites panel." />
                             </TextBlock>
 
                             <ui:Button Content="Open Favorite Sites"

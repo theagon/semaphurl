@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IBrowserDiscoveryService _browserDiscovery;
     private readonly IIconExtractorService _iconExtractor;
     private readonly IStartupService _startup;
+    private readonly IHotkeyService _hotkey;
 
     [ObservableProperty]
     private string _defaultBrowserPath = string.Empty;
@@ -39,6 +40,12 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _startWithWindows;
+
+    [ObservableProperty]
+    private string _favoriteSitesHotkey = "Ctrl+Space";
+
+    [ObservableProperty]
+    private string _clipboardUrlHotkey = "Ctrl+Shift+Space";
 
     [ObservableProperty]
     private string _testUrl = string.Empty;
@@ -92,7 +99,8 @@ public partial class MainViewModel : ObservableObject
         IBrowserRegistrationService registration,
         IBrowserDiscoveryService browserDiscovery,
         IIconExtractorService iconExtractor,
-        IStartupService startup)
+        IStartupService startup,
+        IHotkeyService hotkey)
     {
         _config = config;
         _routing = routing;
@@ -101,6 +109,7 @@ public partial class MainViewModel : ObservableObject
         _browserDiscovery = browserDiscovery;
         _iconExtractor = iconExtractor;
         _startup = startup;
+        _hotkey = hotkey;
         
         LoadFromConfig();
         RefreshRegistrationStatus();
@@ -114,6 +123,8 @@ public partial class MainViewModel : ObservableObject
         StartMinimized = _config.Config.StartMinimized;
         ShowNotifications = _config.Config.ShowNotifications;
         StartWithWindows = _startup.IsEnabled;
+        FavoriteSitesHotkey = _config.Config.FavoriteSitesHotkey;
+        ClipboardUrlHotkey = _config.Config.ClipboardUrlHotkey;
 
         Rules.Clear();
         foreach (var rule in _config.Config.Rules.OrderBy(r => r.Order))
@@ -376,12 +387,18 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
+            // Check if hotkeys changed
+            var hotkeysChanged = _config.Config.FavoriteSitesHotkey != FavoriteSitesHotkey ||
+                                 _config.Config.ClipboardUrlHotkey != ClipboardUrlHotkey;
+
             _config.Config.DefaultBrowserPath = DefaultBrowserPath;
             _config.Config.DefaultBrowserArguments = DefaultBrowserArguments;
             _config.Config.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
             _config.Config.StartMinimized = StartMinimized;
             _config.Config.ShowNotifications = ShowNotifications;
             _config.Config.StartWithWindows = StartWithWindows;
+            _config.Config.FavoriteSitesHotkey = FavoriteSitesHotkey;
+            _config.Config.ClipboardUrlHotkey = ClipboardUrlHotkey;
             _config.Config.Rules = Rules.Select(r => r.ToRule()).ToList();
 
             // Update Windows startup registration
@@ -392,6 +409,13 @@ public partial class MainViewModel : ObservableObject
             else
             {
                 _startup.Disable();
+            }
+
+            // Re-register hotkeys if changed
+            if (hotkeysChanged)
+            {
+                _hotkey.ReregisterAll(FavoriteSitesHotkey, ClipboardUrlHotkey);
+                _logger.LogInfo($"Hotkeys updated: FavoriteSites={FavoriteSitesHotkey}, ClipboardUrl={ClipboardUrlHotkey}");
             }
 
             await _config.SaveAsync();

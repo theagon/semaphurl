@@ -35,6 +35,9 @@ public partial class FavoriteSiteViewModel : ObservableObject
     [ObservableProperty]
     private int _order;
 
+    [ObservableProperty]
+    private string _targetBrowserName = "Default Browser";
+
     public FavoriteSiteViewModel(
         FavoriteSite site,
         ImageSource? icon = null,

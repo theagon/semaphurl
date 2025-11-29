@@ -17,6 +17,7 @@ public partial class App : Application
     private UrlHistoryWindow? _urlHistoryWindow;
     private CancellationTokenSource? _cts;
     private IHotkeyService? _hotkeyService;
+    private IClipboardService? _clipboardService;
 
     public static App Instance => (App)Current;
     public IServiceProvider Services => _serviceProvider;
@@ -43,6 +44,7 @@ public partial class App : Application
         services.AddSingleton<IFaviconService, FaviconService>();
         services.AddSingleton<IHotkeyService, HotkeyService>();
         services.AddSingleton<IUrlHistoryService, UrlHistoryService>();
+        services.AddSingleton<IClipboardService, ClipboardService>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
@@ -109,10 +111,16 @@ public partial class App : Application
         // Show startup notification
         ShowStartupNotification();
 
-        // Setup global hotkey for Favorite Sites
+        // Setup global hotkeys
         _hotkeyService = _serviceProvider.GetRequiredService<IHotkeyService>();
-        _hotkeyService.HotkeyPressed += OnHotkeyPressed;
-        _hotkeyService.Register();
+        _hotkeyService.FavoriteSitesHotkeyPressed += OnFavoriteSitesHotkeyPressed;
+        _hotkeyService.ClipboardUrlHotkeyPressed += OnClipboardUrlHotkeyPressed;
+        _hotkeyService.RegisterAll(config.Config.FavoriteSitesHotkey, config.Config.ClipboardUrlHotkey);
+
+        // Start clipboard monitoring for URL detection
+        _clipboardService = _serviceProvider.GetRequiredService<IClipboardService>();
+        _clipboardService.UrlDetected += OnClipboardUrlDetected;
+        _clipboardService.StartMonitoring();
 
         // Start listening for URLs from other instances
         _cts = new CancellationTokenSource();
@@ -268,9 +276,55 @@ public partial class App : Application
         await ProcessUrlAsync(url);
     }
 
-    private void OnHotkeyPressed()
+    private void OnFavoriteSitesHotkeyPressed()
     {
         Dispatcher.Invoke(ToggleFavoriteSites);
+    }
+
+    private void OnClipboardUrlHotkeyPressed()
+    {
+        Dispatcher.Invoke(HandleClipboardUrl);
+    }
+
+    private void OnClipboardUrlDetected(string url)
+    {
+        Dispatcher.Invoke(() => ShowClipboardUrlNotification(url));
+    }
+
+    private void ShowClipboardUrlNotification(string url)
+    {
+        var config = _serviceProvider.GetRequiredService<IConfigurationService>();
+        if (!config.Config.ShowNotifications)
+            return;
+
+        // Truncate URL for display
+        var displayUrl = url.Length > 60 ? url[..57] + "..." : url;
+        var hotkey = config.Config.ClipboardUrlHotkey;
+
+        _trayIcon?.ShowNotification(
+            "URL Detected",
+            $"{displayUrl}\n\nPress {hotkey} to open");
+    }
+
+    private void HandleClipboardUrl()
+    {
+        var clipboardService = _serviceProvider.GetRequiredService<IClipboardService>();
+        var url = clipboardService.GetClipboardUrl();
+
+        if (string.IsNullOrEmpty(url))
+        {
+            _trayIcon?.ShowNotification(
+                "SemaphURL",
+                "No URL found in clipboard.");
+            return;
+        }
+
+        // Show notification and open URL
+        _trayIcon?.ShowNotification(
+            "SemaphURL",
+            $"Opening: {url}");
+
+        _ = ProcessUrlAsync(url);
     }
 
     public void ToggleFavoriteSites()
@@ -374,7 +428,8 @@ public partial class App : Application
     public void ExitApplication()
     {
         _cts?.Cancel();
-        _hotkeyService?.Unregister();
+        _hotkeyService?.UnregisterAll();
+        _clipboardService?.StopMonitoring();
         _trayIcon?.Dispose();
         _singleInstance.Dispose();
         _serviceProvider.Dispose();

@@ -83,13 +83,44 @@ public partial class FavoriteSitesViewModel : ObservableObject
     {
         try
         {
+            // Load icon
             var icon = await _favicon.GetFaviconAsync(vm.Url);
             vm.UpdateIcon(icon);
+            
+            // Resolve target browser
+            var routingResult = _routing.Route(vm.Url);
+            vm.TargetBrowserName = GetBrowserDisplayName(routingResult.BrowserPath);
         }
         catch (Exception ex)
         {
             _logger.LogError($"Failed to load favicon for {vm.Url}", ex);
             vm.UpdateIcon(null); // This will also set IsLoading = false
+        }
+    }
+
+    private string GetBrowserDisplayName(string? browserPath)
+    {
+        if (string.IsNullOrEmpty(browserPath))
+            return "Default Browser";
+
+        try
+        {
+            var fileName = System.IO.Path.GetFileNameWithoutExtension(browserPath);
+            return fileName switch
+            {
+                "chrome" => "Google Chrome",
+                "msedge" => "Microsoft Edge",
+                "firefox" => "Mozilla Firefox",
+                "brave" => "Brave",
+                "opera" => "Opera",
+                "vivaldi" => "Vivaldi",
+                "browser" => "Yandex Browser",
+                _ => fileName
+            };
+        }
+        catch
+        {
+            return "Browser";
         }
     }
 

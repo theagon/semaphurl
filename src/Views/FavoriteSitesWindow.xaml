@@ -116,7 +116,8 @@
                                     Cursor="Hand"
                                     MouseEnter="SiteCard_MouseEnter"
                                     MouseLeave="SiteCard_MouseLeave"
-                                    MouseLeftButtonUp="SiteCard_Click">
+                                    MouseLeftButtonUp="SiteCard_Click"
+                                    ToolTip="{Binding TargetBrowserName}">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Style.Triggers>
