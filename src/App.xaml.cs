@@ -106,6 +106,9 @@ public partial class App : Application
         // Setup tray icon
         SetupTrayIcon();
 
+        // Show startup notification
+        ShowStartupNotification();
+
         // Setup global hotkey for Favorite Sites
         _hotkeyService = _serviceProvider.GetRequiredService<IHotkeyService>();
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
@@ -164,6 +167,24 @@ public partial class App : Application
             };
             _trayIcon.TrayLeftMouseUp += (_, _) => ShowMainWindow();
             _trayIcon.ForceCreate();
+        }
+    }
+
+    private void ShowStartupNotification()
+    {
+        if (_trayIcon == null) return;
+
+        try
+        {
+            // Use Windows toast notification via tray icon
+            _trayIcon.ShowNotification(
+                title: "SemaphURL",
+                message: "Running in system tray. Press Ctrl+Space for Favorite Sites.");
+        }
+        catch (Exception ex)
+        {
+            var logger = _serviceProvider.GetRequiredService<ILoggingService>();
+            logger.LogError("Failed to show startup notification", ex);
         }
     }
 
