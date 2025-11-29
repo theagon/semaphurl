@@ -38,6 +38,14 @@ public partial class FavoriteSiteViewModel : ObservableObject
     [ObservableProperty]
     private string _targetBrowserName = "Default Browser";
 
+    [ObservableProperty]
+    private string? _browserPath;
+
+    /// <summary>
+    /// True if a custom browser is set for this site (overrides routing rules)
+    /// </summary>
+    public bool UsesCustomBrowser => !string.IsNullOrEmpty(BrowserPath);
+
     public FavoriteSiteViewModel(
         FavoriteSite site,
         ImageSource? icon = null,
@@ -54,6 +62,7 @@ public partial class FavoriteSiteViewModel : ObservableObject
         Url = site.Url;
         Icon = icon;
         Order = site.Order;
+        BrowserPath = site.BrowserPath;
     }
 
     [RelayCommand]
@@ -80,6 +89,7 @@ public partial class FavoriteSiteViewModel : ObservableObject
         Name = Name,
         Url = Url,
         IconPath = _site.IconPath,
+        BrowserPath = BrowserPath,
         Order = Order
     };
 

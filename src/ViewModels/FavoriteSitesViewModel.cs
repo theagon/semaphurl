@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SemaphURL.Models;
@@ -15,6 +16,7 @@ public partial class FavoriteSitesViewModel : ObservableObject
     private readonly IRoutingService _routing;
     private readonly IFaviconService _favicon;
     private readonly ILoggingService _logger;
+    private readonly IBrowserDiscoveryService _browserDiscovery;
 
     [ObservableProperty]
     private bool _isEditing;
@@ -31,20 +33,45 @@ public partial class FavoriteSitesViewModel : ObservableObject
     [ObservableProperty]
     private FavoriteSiteViewModel? _editingSite;
 
+    [ObservableProperty]
+    private BrowserOption? _selectedBrowser;
+
     public ObservableCollection<FavoriteSiteViewModel> Sites { get; } = [];
+
+    /// <summary>
+    /// List of browser options for the dropdown (includes "Auto" option)
+    /// </summary>
+    public ObservableCollection<BrowserOption> BrowserOptions { get; } = [];
 
     public FavoriteSitesViewModel(
         IConfigurationService config,
         IRoutingService routing,
         IFaviconService favicon,
-        ILoggingService logger)
+        ILoggingService logger,
+        IBrowserDiscoveryService browserDiscovery)
     {
         _config = config;
         _routing = routing;
         _favicon = favicon;
         _logger = logger;
+        _browserDiscovery = browserDiscovery;
 
+        LoadBrowserOptions();
         LoadSites();
+    }
+
+    private void LoadBrowserOptions()
+    {
+        BrowserOptions.Clear();
+        
+        // Add "Auto" option first
+        BrowserOptions.Add(new BrowserOption("Use routing rules (auto)", null));
+        
+        // Add installed browsers
+        foreach (var browser in _browserDiscovery.GetInstalledBrowsers())
+        {
+            BrowserOptions.Add(new BrowserOption(browser.Name, browser.ExePath));
+        }
     }
 
     public async void LoadSites()
@@ -87,9 +114,16 @@ public partial class FavoriteSitesViewModel : ObservableObject
             var icon = await _favicon.GetFaviconAsync(vm.Url);
             vm.UpdateIcon(icon);
             
-            // Resolve target browser
-            var routingResult = _routing.Route(vm.Url);
-            vm.TargetBrowserName = GetBrowserDisplayName(routingResult.BrowserPath);
+            // Resolve target browser - use custom browser if set, otherwise routing rules
+            if (vm.UsesCustomBrowser)
+            {
+                vm.TargetBrowserName = GetBrowserDisplayName(vm.BrowserPath) + " (custom)";
+            }
+            else
+            {
+                var routingResult = _routing.Route(vm.Url);
+                vm.TargetBrowserName = GetBrowserDisplayName(routingResult.BrowserPath);
+            }
         }
         catch (Exception ex)
         {
@@ -145,9 +179,25 @@ public partial class FavoriteSitesViewModel : ObservableObject
     {
         try
         {
-            var result = _routing.Route(siteVm.Url);
-            _ = _routing.ExecuteRoutingAsync(result);
-            _logger.LogInfo($"Opened favorite site: {siteVm.Name} -> {siteVm.Url}");
+            if (siteVm.UsesCustomBrowser)
+            {
+                // Direct open with selected browser (bypass routing)
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = siteVm.BrowserPath,
+                    Arguments = $"\"{siteVm.Url}\"",
+                    UseShellExecute = true
+                };
+                Process.Start(startInfo);
+                _logger.LogInfo($"Opened favorite site with custom browser: {siteVm.Name} -> {siteVm.Url} ({siteVm.BrowserPath})");
+            }
+            else
+            {
+                // Use routing service
+                var result = _routing.Route(siteVm.Url);
+                _ = _routing.ExecuteRoutingAsync(result);
+                _logger.LogInfo($"Opened favorite site via routing: {siteVm.Name} -> {siteVm.Url}");
+            }
             
             // Close the window after opening
             App.Instance.HideFavoriteSites();
@@ -163,6 +213,12 @@ public partial class FavoriteSitesViewModel : ObservableObject
         EditingSite = siteVm;
         EditName = siteVm.Name;
         EditUrl = siteVm.Url;
+        
+        // Select current browser in dropdown
+        SelectedBrowser = BrowserOptions.FirstOrDefault(b => 
+            b.Path?.Equals(siteVm.BrowserPath, StringComparison.OrdinalIgnoreCase) == true)
+            ?? BrowserOptions.First(); // Default to "Auto"
+        
         IsAddingNew = false;
         IsEditing = true;
     }
@@ -173,6 +229,7 @@ public partial class FavoriteSitesViewModel : ObservableObject
         EditingSite = null;
         EditName = string.Empty;
         EditUrl = string.Empty;
+        SelectedBrowser = BrowserOptions.First(); // Default to "Auto"
         IsAddingNew = true;
         IsEditing = true;
     }
@@ -191,10 +248,16 @@ public partial class FavoriteSitesViewModel : ObservableObject
             url = "https://" + url;
         }
 
+        // Get selected browser path (null for "Auto")
+        var browserPath = SelectedBrowser?.Path;
+
         if (IsAddingNew)
         {
             // Add new site
-            var newSite = new FavoriteSite(EditName.Trim(), url, Sites.Count);
+            var newSite = new FavoriteSite(EditName.Trim(), url, Sites.Count)
+            {
+                BrowserPath = browserPath
+            };
             _config.Config.FavoriteSites.Add(newSite);
 
             // Add with loading state first
@@ -212,10 +275,12 @@ public partial class FavoriteSitesViewModel : ObservableObject
         else if (EditingSite != null)
         {
             var urlChanged = !EditingSite.Url.Equals(url, StringComparison.OrdinalIgnoreCase);
+            var browserChanged = EditingSite.BrowserPath != browserPath;
             
             // Update existing site
             EditingSite.Name = EditName.Trim();
             EditingSite.Url = url;
+            EditingSite.BrowserPath = browserPath;
 
             // Update the model in config
             var configSite = _config.Config.FavoriteSites.FirstOrDefault(s => s.Id == EditingSite.Id);
@@ -223,10 +288,11 @@ public partial class FavoriteSitesViewModel : ObservableObject
             {
                 configSite.Name = EditName.Trim();
                 configSite.Url = url;
+                configSite.BrowserPath = browserPath;
             }
 
-            // Update icon if URL changed
-            if (urlChanged)
+            // Update display if URL or browser changed
+            if (urlChanged || browserChanged)
             {
                 EditingSite.IsLoading = true;
                 _ = LoadIconAsync(EditingSite);
@@ -245,6 +311,7 @@ public partial class FavoriteSitesViewModel : ObservableObject
         EditingSite = null;
         EditName = string.Empty;
         EditUrl = string.Empty;
+        SelectedBrowser = null;
     }
 
     private async void DeleteSite(FavoriteSiteViewModel siteVm)
@@ -269,5 +336,22 @@ public partial class FavoriteSitesViewModel : ObservableObject
     {
         App.Instance.HideFavoriteSites();
     }
+}
+
+/// <summary>
+/// Represents a browser option in the dropdown
+/// </summary>
+public class BrowserOption
+{
+    public string Name { get; }
+    public string? Path { get; }
+
+    public BrowserOption(string name, string? path)
+    {
+        Name = name;
+        Path = path;
+    }
+
+    public override string ToString() => Name;
 }
 

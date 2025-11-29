@@ -327,7 +327,15 @@
                                Margin="0,0,0,8" />
                     <ui:TextBox Text="{Binding EditUrl, UpdateSourceTrigger=PropertyChanged}"
                                 PlaceholderText="e.g., https://youtube.com"
-                                Margin="0,0,0,24" />
+                                Margin="0,0,0,16" />
+
+                    <TextBlock Text="Browser"
+                               Foreground="#B0FFFFFF"
+                               Margin="0,0,0,8" />
+                    <ComboBox ItemsSource="{Binding BrowserOptions}"
+                              SelectedItem="{Binding SelectedBrowser}"
+                              DisplayMemberPath="Name"
+                              Margin="0,0,0,24" />
 
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Right">
