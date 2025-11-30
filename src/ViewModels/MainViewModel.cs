@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
+using System.Windows;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -595,6 +597,207 @@ public partial class MainViewModel : ObservableObject
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    [RelayCommand]
+    private void ExportSettings()
+    {
+        try
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export Settings",
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                FileName = $"semaphurl-backup-{DateTime.Now:yyyy-MM-dd}.json",
+                DefaultExt = ".json"
+            };
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            var exportData = new ExportData
+            {
+                Version = "1.0",
+                ExportDate = DateTime.UtcNow,
+                Rules = Rules.Select(r => r.ToRule()).ToList(),
+                FavoriteSites = _config.Config.FavoriteSites.Select(s => s.Clone()).ToList(),
+                Settings = new ExportSettings
+                {
+                    DefaultBrowserPath = DefaultBrowserPath,
+                    DefaultBrowserArguments = DefaultBrowserArguments,
+                    DeveloperMode = DeveloperMode,
+                    FavoriteSitesHotkey = FavoriteSitesHotkey,
+                    ClipboardUrlHotkey = ClipboardUrlHotkey
+                }
+            };
+
+            var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+            
+            File.WriteAllText(dialog.FileName, json);
+            
+            StatusMessage = $"Settings exported to {Path.GetFileName(dialog.FileName)}";
+            _logger.LogInfo($"Settings exported to {dialog.FileName}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Export failed: {ex.Message}";
+            _logger.LogError("Failed to export settings", ex);
+        }
+    }
+
+    [RelayCommand]
+    private void ImportSettings()
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import Settings",
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                DefaultExt = ".json"
+            };
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            var json = File.ReadAllText(dialog.FileName);
+            var exportData = JsonSerializer.Deserialize<ExportData>(json);
+            
+            if (exportData == null)
+            {
+                MessageBox.Show("Invalid export file format.", "Import Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Confirm import
+            var confirmResult = MessageBox.Show(
+                $"This will replace all your current settings:\n\n" +
+                $"• {exportData.Rules.Count} routing rules\n" +
+                $"• {exportData.FavoriteSites.Count} favorite sites\n\n" +
+                $"Exported on: {exportData.ExportDate:yyyy-MM-dd HH:mm}\n\n" +
+                "Continue?",
+                "Confirm Import",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirmResult != MessageBoxResult.Yes)
+                return;
+
+            var result = ProcessImport(exportData);
+            
+            // Show result
+            MessageBox.Show(
+                result.GetSummary(),
+                result.Success ? "Import Complete" : "Import Failed",
+                MessageBoxButton.OK,
+                result.Success ? (result.HasWarnings ? MessageBoxImage.Warning : MessageBoxImage.Information) : MessageBoxImage.Error);
+
+            if (result.Success)
+            {
+                StatusMessage = $"Imported {result.RulesImported} rules, {result.FavoritesImported} favorites";
+                HasUnsavedChanges = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Import failed: {ex.Message}";
+            _logger.LogError("Failed to import settings", ex);
+            MessageBox.Show($"Failed to import settings:\n{ex.Message}", "Import Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private ImportResult ProcessImport(ExportData data)
+    {
+        var result = new ImportResult { Success = true };
+
+        try
+        {
+            // Clear existing rules
+            Rules.Clear();
+
+            // Import rules
+            foreach (var rule in data.Rules)
+            {
+                // Check if browser exists
+                if (!string.IsNullOrEmpty(rule.BrowserPath) && !File.Exists(rule.BrowserPath))
+                {
+                    rule.Enabled = false;
+                    result.DisabledRules.Add($"{rule.Name} ({Path.GetFileName(rule.BrowserPath)})");
+                }
+
+                Rules.Add(new RuleViewModel(rule));
+                result.RulesImported++;
+            }
+
+            // Import favorites
+            _config.Config.FavoriteSites.Clear();
+            foreach (var site in data.FavoriteSites)
+            {
+                // Check if custom browser exists
+                if (!string.IsNullOrEmpty(site.BrowserPath) && !File.Exists(site.BrowserPath))
+                {
+                    site.BrowserPath = null; // Reset to auto-routing
+                    result.Warnings.Add($"Favorite \"{site.Name}\" reset to auto-routing");
+                }
+
+                _config.Config.FavoriteSites.Add(site);
+                result.FavoritesImported++;
+            }
+
+            // Import settings
+            if (data.Settings != null)
+            {
+                // Default browser - only if exists
+                if (!string.IsNullOrEmpty(data.Settings.DefaultBrowserPath))
+                {
+                    if (File.Exists(data.Settings.DefaultBrowserPath))
+                    {
+                        DefaultBrowserPath = data.Settings.DefaultBrowserPath;
+                    }
+                    else
+                    {
+                        result.Warnings.Add("Default browser path skipped (not found)");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(data.Settings.DefaultBrowserArguments))
+                {
+                    DefaultBrowserArguments = data.Settings.DefaultBrowserArguments;
+                }
+
+                DeveloperMode = data.Settings.DeveloperMode;
+
+                if (!string.IsNullOrEmpty(data.Settings.FavoriteSitesHotkey))
+                {
+                    FavoriteSitesHotkey = data.Settings.FavoriteSitesHotkey;
+                }
+
+                if (!string.IsNullOrEmpty(data.Settings.ClipboardUrlHotkey))
+                {
+                    ClipboardUrlHotkey = data.Settings.ClipboardUrlHotkey;
+                }
+            }
+
+            // Refresh UI
+            UpdateOrders();
+            RefreshBrowserGroups();
+            UpdateSelectedDefaultBrowser();
+
+            _logger.LogInfo($"Import successful: {result.RulesImported} rules, {result.FavoritesImported} favorites");
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = ex.Message;
+            _logger.LogError("Import processing failed", ex);
+        }
+
+        return result;
     }
 
     partial void OnDefaultBrowserPathChanged(string value)

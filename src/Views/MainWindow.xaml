@@ -499,6 +499,36 @@
                         </StackPanel>
                     </ui:CardExpander>
 
+                    <!-- Backup & Restore Section -->
+                    <ui:CardExpander Header="Backup &amp; Restore" IsExpanded="False"
+                                     Icon="{ui:SymbolIcon ArrowDownload24}"
+                                     Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
+                                       Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}">
+                                <Run Text="Export your routing rules and favorite sites to a file, or import settings from a backup. Useful for transferring settings between computers." />
+                            </TextBlock>
+
+                            <StackPanel Orientation="Horizontal">
+                                <ui:Button Content="Export Settings"
+                                           Icon="{ui:SymbolIcon ArrowUpload24}"
+                                           Command="{Binding ExportSettingsCommand}"
+                                           Appearance="Primary"
+                                           Margin="0,0,8,0" />
+                                <ui:Button Content="Import Settings"
+                                           Icon="{ui:SymbolIcon ArrowDownload24}"
+                                           Command="{Binding ImportSettingsCommand}"
+                                           Appearance="Secondary" />
+                            </StackPanel>
+
+                            <TextBlock Text="Note: Import will replace all current rules and favorites."
+                                       Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                       FontSize="11"
+                                       FontStyle="Italic"
+                                       Margin="0,12,0,0" />
+                        </StackPanel>
+                    </ui:CardExpander>
+
                 </StackPanel>
 
                 <!-- Add Rule Dialog Overlay -->
