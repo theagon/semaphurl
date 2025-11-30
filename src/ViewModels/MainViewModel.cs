@@ -91,13 +91,33 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private InstalledBrowser? _selectedDefaultBrowser;
 
+    // Developer Mode
+    [ObservableProperty]
+    private bool _developerMode;
+
     // Collections
     public ObservableCollection<RuleViewModel> Rules { get; } = [];
     public ObservableCollection<BrowserGroupViewModel> BrowserGroups { get; } = [];
 
     public IReadOnlyList<string> AvailablePlaceholders => PlaceholderResolver.GetAvailablePlaceholders();
     public IReadOnlyList<InstalledBrowser> InstalledBrowsers => _browserDiscovery.GetInstalledBrowsers();
+    
+    /// <summary>
+    /// All pattern types (used internally)
+    /// </summary>
     public static IEnumerable<PatternType> PatternTypes => Enum.GetValues<PatternType>();
+    
+    /// <summary>
+    /// Pattern types available based on Developer Mode setting
+    /// </summary>
+    public IEnumerable<PatternType> AvailablePatternTypes => DeveloperMode
+        ? Enum.GetValues<PatternType>()
+        : new[] { PatternType.DomainContains, PatternType.DomainEquals, PatternType.UrlContains };
+
+    /// <summary>
+    /// Window title changes based on Developer Mode
+    /// </summary>
+    public string WindowTitle => DeveloperMode ? "SemaphURL Settings [Developer]" : "SemaphURL Settings";
 
     public MainViewModel(
         IConfigurationService config, 
@@ -133,6 +153,7 @@ public partial class MainViewModel : ObservableObject
         StartWithWindows = _startup.IsEnabled;
         FavoriteSitesHotkey = _config.Config.FavoriteSitesHotkey;
         ClipboardUrlHotkey = _config.Config.ClipboardUrlHotkey;
+        DeveloperMode = _config.Config.DeveloperMode;
 
         Rules.Clear();
         foreach (var rule in _config.Config.Rules.OrderBy(r => r.Order))
@@ -416,6 +437,7 @@ public partial class MainViewModel : ObservableObject
             _config.Config.StartWithWindows = StartWithWindows;
             _config.Config.FavoriteSitesHotkey = FavoriteSitesHotkey;
             _config.Config.ClipboardUrlHotkey = ClipboardUrlHotkey;
+            _config.Config.DeveloperMode = DeveloperMode;
             _config.Config.Rules = Rules.Select(r => r.ToRule()).ToList();
 
             // Update Windows startup registration
@@ -594,4 +616,11 @@ public partial class MainViewModel : ObservableObject
     partial void OnShowNotificationsChanged(bool value) => HasUnsavedChanges = true;
     partial void OnFocusBrowserAfterRoutingChanged(bool value) => HasUnsavedChanges = true;
     partial void OnStartWithWindowsChanged(bool value) => HasUnsavedChanges = true;
+    
+    partial void OnDeveloperModeChanged(bool value)
+    {
+        HasUnsavedChanges = true;
+        OnPropertyChanged(nameof(AvailablePatternTypes));
+        OnPropertyChanged(nameof(WindowTitle));
+    }
 }

@@ -16,5 +16,6 @@ public class AppConfig
     public string FavoriteSitesHotkey { get; set; } = "Ctrl+Space";
     public string ClipboardUrlHotkey { get; set; } = "Ctrl+Shift+Space";
     public bool FocusBrowserAfterRouting { get; set; } = true;
+    public bool DeveloperMode { get; set; } = false;
 }
 

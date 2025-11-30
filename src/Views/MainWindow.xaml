@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:vm="clr-namespace:SemaphURL.ViewModels"
         xmlns:models="clr-namespace:SemaphURL.Models"
-        Title="SemaphURL Settings"
+        Title="{Binding WindowTitle}"
         Width="950" Height="750"
         MinWidth="750" MinHeight="550"
         WindowStartupLocation="CenterScreen"
@@ -229,7 +229,7 @@
                                                                                             PlaceholderText="Rule name"
                                                                                             MinWidth="150"
                                                                                             Margin="0,0,8,0" />
-                                                                                <ComboBox ItemsSource="{Binding PatternTypes}"
+                                                                                <ComboBox ItemsSource="{Binding DataContext.AvailablePatternTypes, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
                                                                                           SelectedItem="{Binding PatternType}"
                                                                                           MinWidth="130"
                                                                                           Margin="0,0,8,0" />
@@ -283,10 +283,11 @@
                         </StackPanel>
                     </ui:CardExpander>
 
-                    <!-- Test URL Section -->
+                    <!-- Test URL Section (Developer Mode only) -->
                     <ui:CardExpander Header="Test URL Routing" IsExpanded="False"
                                      Icon="{ui:SymbolIcon BeakerEdit24}"
-                                     Margin="0,16,0,0">
+                                     Margin="0,16,0,0"
+                                     Visibility="{Binding DeveloperMode, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock Text="Enter a URL to test which rule and browser would be used."
                                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
@@ -384,17 +385,41 @@
                                 <ui:ToggleSwitch IsChecked="{Binding FocusBrowserAfterRouting}" />
                             </ui:CardControl>
 
+                            <!-- Separator -->
+                            <Border Height="1" 
+                                    Background="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
+                                    Margin="0,8,0,20" />
+
+                            <!-- Developer Mode -->
+                            <ui:CardControl Margin="0,0,0,12">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Symbol="Code24" Margin="0,0,8,0" />
+                                            <TextBlock Text="Developer Mode" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                        <TextBlock Text="Enable advanced features: regex patterns, port-based routing, URL testing, keyboard shortcuts"
+                                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding DeveloperMode}" />
+                            </ui:CardControl>
+
                             <ui:Button Content="Open Config Folder"
                                        Icon="{ui:SymbolIcon Folder24}"
                                        Command="{Binding OpenConfigFolderCommand}"
-                                       HorizontalAlignment="Left" />
+                                       HorizontalAlignment="Left"
+                                       Visibility="{Binding DeveloperMode, Converter={StaticResource BoolToVisibilityConverter}}" />
                         </StackPanel>
                     </ui:CardExpander>
 
-                    <!-- Keyboard Shortcuts Section -->
+                    <!-- Keyboard Shortcuts Section (Developer Mode only) -->
                     <ui:CardExpander Header="Keyboard Shortcuts" IsExpanded="False"
                                      Icon="{ui:SymbolIcon Keyboard24}"
-                                     Margin="0,16,0,0">
+                                     Margin="0,16,0,0"
+                                     Visibility="{Binding DeveloperMode, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
                                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}">
@@ -514,7 +539,7 @@
 
                             <!-- Pattern Type -->
                             <TextBlock Text="Pattern Type" Margin="0,0,0,8" />
-                            <ComboBox ItemsSource="{Binding PatternTypes}"
+                            <ComboBox ItemsSource="{Binding AvailablePatternTypes}"
                                       SelectedItem="{Binding NewRulePatternType}"
                                       Margin="0,0,0,16" />
 

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using SemaphURL.Models;
 
 namespace SemaphURL.Services;
@@ -133,27 +132,7 @@ public class RoutingService : IRoutingService
 
     private static bool MatchesRule(Uri? uri, string url, RoutingRule rule)
     {
-        if (string.IsNullOrWhiteSpace(rule.Pattern))
-            return false;
-
-        try
-        {
-            return rule.PatternType switch
-            {
-                PatternType.DomainContains => uri?.Host.Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase) == true,
-                PatternType.DomainEquals => uri?.Host.Equals(rule.Pattern, StringComparison.OrdinalIgnoreCase) == true,
-                PatternType.DomainStartsWith => uri?.Host.StartsWith(rule.Pattern, StringComparison.OrdinalIgnoreCase) == true,
-                PatternType.DomainEndsWith => uri?.Host.EndsWith(rule.Pattern, StringComparison.OrdinalIgnoreCase) == true,
-                PatternType.UrlContains => url.Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase),
-                PatternType.Regex => Regex.IsMatch(url, rule.Pattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)),
-                _ => false
-            };
-        }
-        catch
-        {
-            // Invalid regex or other error
-            return false;
-        }
+        return PatternMatcher.Matches(uri, url, rule.PatternType, rule.Pattern);
     }
 
     public async Task<bool> ExecuteRoutingAsync(RoutingResult result)

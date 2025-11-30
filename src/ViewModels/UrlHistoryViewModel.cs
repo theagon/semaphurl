@@ -16,6 +16,7 @@ public partial class UrlHistoryViewModel : ObservableObject
     private readonly IRoutingService _routing;
     private readonly ILoggingService _logger;
     private readonly IBrowserDiscoveryService _browserDiscovery;
+    private readonly IConfigurationService _config;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -46,6 +47,13 @@ public partial class UrlHistoryViewModel : ObservableObject
 
     public IReadOnlyList<InstalledBrowser> InstalledBrowsers => _browserDiscovery.GetInstalledBrowsers();
     public static IEnumerable<PatternType> PatternTypes => Enum.GetValues<PatternType>();
+    
+    /// <summary>
+    /// Pattern types available based on Developer Mode setting
+    /// </summary>
+    public IEnumerable<PatternType> AvailablePatternTypes => _config.Config.DeveloperMode
+        ? Enum.GetValues<PatternType>()
+        : new[] { PatternType.DomainContains, PatternType.DomainEquals, PatternType.UrlContains };
 
     public int TotalCount => Entries.Count;
     public int FilteredCount => FilteredEntries.Count;
@@ -54,12 +62,14 @@ public partial class UrlHistoryViewModel : ObservableObject
         IUrlHistoryService history,
         IRoutingService routing,
         ILoggingService logger,
-        IBrowserDiscoveryService browserDiscovery)
+        IBrowserDiscoveryService browserDiscovery,
+        IConfigurationService config)
     {
         _history = history;
         _routing = routing;
         _logger = logger;
         _browserDiscovery = browserDiscovery;
+        _config = config;
 
         LoadEntries();
     }

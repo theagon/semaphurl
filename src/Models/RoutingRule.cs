@@ -8,12 +8,20 @@ namespace SemaphURL.Models;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PatternType
 {
+    // Basic patterns (always visible)
     DomainContains,
-    UrlContains,
-    Regex,
     DomainEquals,
+    UrlContains,
+    
+    // Advanced patterns (Developer Mode only)
+    Regex,
     DomainStartsWith,
-    DomainEndsWith
+    DomainEndsWith,
+    
+    // Developer patterns (Developer Mode only)
+    HostPort,       // "localhost:3000" - exact host:port match
+    PortEquals,     // "3000" - any host with this port  
+    PortRange       // "3000-3999" - port range
 }
 
 /// <summary>
