@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using SemaphURL.Models;
 
@@ -17,6 +18,18 @@ public interface IRoutingService
 /// </summary>
 public class RoutingService : IRoutingService
 {
+    // Win32 API imports for window focus
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    private const int SW_RESTORE = 9;
+
     private readonly IConfigurationService _config;
     private readonly ILoggingService _logger;
     private readonly IUrlHistoryService _history;
@@ -197,6 +210,12 @@ public class RoutingService : IRoutingService
                 
                 browserPath = result.BrowserPath;
                 browserName = Path.GetFileNameWithoutExtension(result.BrowserPath);
+
+                // Focus browser window if enabled
+                if (_config.Config.FocusBrowserAfterRouting)
+                {
+                    await FocusBrowserWindowAsync(result.BrowserPath);
+                }
             }
 
             // Record to history
@@ -239,6 +258,39 @@ public class RoutingService : IRoutingService
         catch (Exception ex)
         {
             _logger.LogError("Failed to record URL history", ex);
+        }
+    }
+
+    private async Task FocusBrowserWindowAsync(string browserPath)
+    {
+        // Wait a bit for the browser to process the URL
+        await Task.Delay(300);
+
+        try
+        {
+            var browserProcessName = Path.GetFileNameWithoutExtension(browserPath);
+            var browserProcesses = Process.GetProcessesByName(browserProcessName);
+
+            foreach (var proc in browserProcesses)
+            {
+                var handle = proc.MainWindowHandle;
+                if (handle != IntPtr.Zero)
+                {
+                    // Restore if minimized
+                    if (IsIconic(handle))
+                    {
+                        ShowWindow(handle, SW_RESTORE);
+                    }
+                    
+                    SetForegroundWindow(handle);
+                    _logger.LogInfo($"Focused browser window: {browserProcessName}");
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to focus browser window", ex);
         }
     }
 }

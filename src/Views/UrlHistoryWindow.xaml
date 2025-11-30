@@ -70,11 +70,6 @@
                                    ToolTip="Refresh"
                                    Command="{Binding RefreshCommand}"
                                    Margin="0,0,4,0" />
-                        <ui:Button Content="DEBUG"
-                                   ToolTip="Debug Refresh - writes to log"
-                                   Command="{Binding DebugRefreshCommand}"
-                                   Appearance="Caution"
-                                   Margin="0,0,4,0" />
                         <ui:Button Icon="{ui:SymbolIcon Delete24}"
                                    ToolTip="Clear History"
                                    Command="{Binding ClearHistoryCommand}"

@@ -39,6 +39,9 @@ public partial class MainViewModel : ObservableObject
     private bool _showNotifications = true;
 
     [ObservableProperty]
+    private bool _focusBrowserAfterRouting = true;
+
+    [ObservableProperty]
     private bool _startWithWindows;
 
     [ObservableProperty]
@@ -84,6 +87,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _newRulePattern = string.Empty;
 
+    // For default browser selection display
+    [ObservableProperty]
+    private InstalledBrowser? _selectedDefaultBrowser;
+
     // Collections
     public ObservableCollection<RuleViewModel> Rules { get; } = [];
     public ObservableCollection<BrowserGroupViewModel> BrowserGroups { get; } = [];
@@ -122,6 +129,7 @@ public partial class MainViewModel : ObservableObject
         MinimizeToTrayOnClose = _config.Config.MinimizeToTrayOnClose;
         StartMinimized = _config.Config.StartMinimized;
         ShowNotifications = _config.Config.ShowNotifications;
+        FocusBrowserAfterRouting = _config.Config.FocusBrowserAfterRouting;
         StartWithWindows = _startup.IsEnabled;
         FavoriteSitesHotkey = _config.Config.FavoriteSitesHotkey;
         ClipboardUrlHotkey = _config.Config.ClipboardUrlHotkey;
@@ -133,7 +141,14 @@ public partial class MainViewModel : ObservableObject
         }
 
         RefreshBrowserGroups();
+        UpdateSelectedDefaultBrowser();
         HasUnsavedChanges = false;
+    }
+
+    private void UpdateSelectedDefaultBrowser()
+    {
+        SelectedDefaultBrowser = InstalledBrowsers.FirstOrDefault(b =>
+            b.ExePath.Equals(DefaultBrowserPath, StringComparison.OrdinalIgnoreCase));
     }
 
     private void RefreshBrowserGroups()
@@ -213,6 +228,7 @@ public partial class MainViewModel : ObservableObject
         _browserDiscovery.RefreshBrowserList();
         OnPropertyChanged(nameof(InstalledBrowsers));
         RefreshBrowserGroups();
+        UpdateSelectedDefaultBrowser();
         StatusMessage = $"Found {InstalledBrowsers.Count} browsers";
     }
 
@@ -396,6 +412,7 @@ public partial class MainViewModel : ObservableObject
             _config.Config.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
             _config.Config.StartMinimized = StartMinimized;
             _config.Config.ShowNotifications = ShowNotifications;
+            _config.Config.FocusBrowserAfterRouting = FocusBrowserAfterRouting;
             _config.Config.StartWithWindows = StartWithWindows;
             _config.Config.FavoriteSitesHotkey = FavoriteSitesHotkey;
             _config.Config.ClipboardUrlHotkey = ClipboardUrlHotkey;
@@ -558,10 +575,23 @@ public partial class MainViewModel : ObservableObject
         return dialog.ShowDialog() == true ? dialog.FileName : null;
     }
 
-    partial void OnDefaultBrowserPathChanged(string value) => HasUnsavedChanges = true;
+    partial void OnDefaultBrowserPathChanged(string value)
+    {
+        HasUnsavedChanges = true;
+        UpdateSelectedDefaultBrowser();
+    }
+
+    partial void OnSelectedDefaultBrowserChanged(InstalledBrowser? value)
+    {
+        if (value != null && !value.ExePath.Equals(DefaultBrowserPath, StringComparison.OrdinalIgnoreCase))
+        {
+            DefaultBrowserPath = value.ExePath;
+        }
+    }
     partial void OnDefaultBrowserArgumentsChanged(string value) => HasUnsavedChanges = true;
     partial void OnMinimizeToTrayOnCloseChanged(bool value) => HasUnsavedChanges = true;
     partial void OnStartMinimizedChanged(bool value) => HasUnsavedChanges = true;
     partial void OnShowNotificationsChanged(bool value) => HasUnsavedChanges = true;
+    partial void OnFocusBrowserAfterRoutingChanged(bool value) => HasUnsavedChanges = true;
     partial void OnStartWithWindowsChanged(bool value) => HasUnsavedChanges = true;
 }

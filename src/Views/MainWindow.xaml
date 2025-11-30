@@ -132,9 +132,9 @@
                                 <TextBlock Text="Quick select:" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <ComboBox x:Name="DefaultBrowserCombo"
                                           ItemsSource="{Binding InstalledBrowsers}"
+                                          SelectedItem="{Binding SelectedDefaultBrowser}"
                                           DisplayMemberPath="Name"
-                                          MinWidth="200"
-                                          SelectionChanged="OnDefaultBrowserSelectionChanged" />
+                                          MinWidth="200" />
                                 <ui:Button Icon="{ui:SymbolIcon ArrowSync24}"
                                            Command="{Binding RefreshBrowsersCommand}"
                                            ToolTip="Refresh browser list"
@@ -370,6 +370,18 @@
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:ToggleSwitch IsChecked="{Binding ShowNotifications}" />
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,12">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Switch to browser after routing" />
+                                        <TextBlock Text="Automatically focus browser window when URL is opened"
+                                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                                   FontSize="12" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch IsChecked="{Binding FocusBrowserAfterRouting}" />
                             </ui:CardControl>
 
                             <ui:Button Content="Open Config Folder"
