@@ -565,7 +565,28 @@
                             <TextBlock Text="Pattern" Margin="0,0,0,8" />
                             <ui:TextBox Text="{Binding NewRulePattern, UpdateSourceTrigger=PropertyChanged}"
                                         PlaceholderText="e.g., youtube.com"
-                                        Margin="0,0,0,24" />
+                                        Margin="0,0,0,16" />
+
+                            <!-- Advanced Options -->
+                            <Expander Header="Advanced" IsExpanded="False" Margin="0,0,0,24">
+                                <StackPanel Margin="0,12,0,0">
+                                    <!-- Preset Dropdown -->
+                                    <TextBlock Text="Browser Mode" Margin="0,0,0,8" />
+                                    <ComboBox ItemsSource="{Binding AvailableArgumentsPresets}"
+                                              SelectedItem="{Binding NewRuleArgumentsPreset}"
+                                              Margin="0,0,0,12" />
+
+                                    <!-- Arguments Template -->
+                                    <TextBlock Text="Arguments Template" Margin="0,0,0,8" />
+                                    <ui:TextBox Text="{Binding NewRuleArgumentsTemplate, UpdateSourceTrigger=PropertyChanged}"
+                                                PlaceholderText='e.g., "{url}"'
+                                                FontFamily="Consolas" />
+                                    <TextBlock Text="Use {url} as placeholder for the URL"
+                                               Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                               FontSize="11"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Expander>
 
                             <!-- Buttons -->
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

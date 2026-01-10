@@ -86,6 +86,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _newRulePattern = string.Empty;
 
+    [ObservableProperty]
+    private string _newRuleArgumentsPreset = "Default";
+
+    [ObservableProperty]
+    private string _newRuleArgumentsTemplate = "\"{url}\"";
+
     // For default browser selection display
     [ObservableProperty]
     private InstalledBrowser? _selectedDefaultBrowser;
@@ -100,6 +106,7 @@ public partial class MainViewModel : ObservableObject
 
     public IReadOnlyList<string> AvailablePlaceholders => PlaceholderResolver.GetAvailablePlaceholders();
     public IReadOnlyList<InstalledBrowser> InstalledBrowsers => _browserDiscovery.GetInstalledBrowsers();
+    public static IReadOnlyList<string> AvailableArgumentsPresets => BrowserArgumentPresets.PresetNames;
     
     /// <summary>
     /// All pattern types (used internally)
@@ -257,6 +264,8 @@ public partial class MainViewModel : ObservableObject
         NewRuleName = "New Rule";
         NewRulePatternType = PatternType.DomainContains;
         NewRulePattern = string.Empty;
+        NewRuleArgumentsPreset = "Default";
+        NewRuleArgumentsTemplate = "\"{url}\"";
         NewRuleBrowser = InstalledBrowsers.FirstOrDefault();
         IsAddingRule = true;
     }
@@ -282,7 +291,7 @@ public partial class MainViewModel : ObservableObject
             PatternType = NewRulePatternType,
             Pattern = NewRulePattern,
             BrowserPath = NewRuleBrowser.ExePath,
-            BrowserArgumentsTemplate = "\"{url}\"",
+            BrowserArgumentsTemplate = NewRuleArgumentsTemplate,
             Order = Rules.Count
         });
 
@@ -300,7 +309,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (browserGroup == null) return;
 
-        var browser = InstalledBrowsers.FirstOrDefault(b => 
+        var browser = InstalledBrowsers.FirstOrDefault(b =>
             b.ExePath.Equals(browserGroup.BrowserPath, StringComparison.OrdinalIgnoreCase));
 
         if (browser != null)
@@ -311,6 +320,8 @@ public partial class MainViewModel : ObservableObject
         NewRuleName = "New Rule";
         NewRulePatternType = PatternType.DomainContains;
         NewRulePattern = string.Empty;
+        NewRuleArgumentsPreset = "Default";
+        NewRuleArgumentsTemplate = "\"{url}\"";
         IsAddingRule = true;
     }
 
@@ -819,5 +830,21 @@ public partial class MainViewModel : ObservableObject
         HasUnsavedChanges = true;
         OnPropertyChanged(nameof(AvailablePatternTypes));
         OnPropertyChanged(nameof(WindowTitle));
+    }
+
+    partial void OnNewRuleArgumentsPresetChanged(string value)
+    {
+        if (NewRuleBrowser != null)
+        {
+            NewRuleArgumentsTemplate = BrowserArgumentPresets.GetArguments(value, NewRuleBrowser.ExePath);
+        }
+    }
+
+    partial void OnNewRuleBrowserChanged(InstalledBrowser? value)
+    {
+        if (value != null && !string.IsNullOrEmpty(NewRuleArgumentsPreset))
+        {
+            NewRuleArgumentsTemplate = BrowserArgumentPresets.GetArguments(NewRuleArgumentsPreset, value.ExePath);
+        }
     }
 }

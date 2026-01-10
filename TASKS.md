@@ -121,16 +121,16 @@
 
 ---
 
-### 1.7 Спрятать Browser Arguments
+### 1.7 Спрятать Browser Arguments ✅
 
-- [ ] Перенести `BrowserArgumentsTemplate` в expandable секцию
-- [ ] Использовать Expander с заголовком "Advanced"
-- [ ] Добавить dropdown с presets:
+- [x] Перенести `BrowserArgumentsTemplate` в expandable секцию
+- [x] Использовать Expander с заголовком "Advanced"
+- [x] Добавить dropdown с presets:
   - Default (пусто)
   - Incognito/Private
   - New Window
-- [ ] Маппинг preset → аргументы для разных браузеров
-- [ ] При выборе preset → заполнять текстовое поле
+- [x] Маппинг preset → аргументы для разных браузеров (`BrowserArgumentPresets.cs`)
+- [x] При выборе preset → заполнять текстовое поле
 
 ---
 
