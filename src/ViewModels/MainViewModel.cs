@@ -38,9 +38,6 @@ public partial class MainViewModel : ObservableObject
     private bool _startMinimized;
 
     [ObservableProperty]
-    private bool _showNotifications = true;
-
-    [ObservableProperty]
     private bool _focusBrowserAfterRouting = true;
 
     [ObservableProperty]
@@ -150,7 +147,6 @@ public partial class MainViewModel : ObservableObject
         DefaultBrowserArguments = _config.Config.DefaultBrowserArguments;
         MinimizeToTrayOnClose = _config.Config.MinimizeToTrayOnClose;
         StartMinimized = _config.Config.StartMinimized;
-        ShowNotifications = _config.Config.ShowNotifications;
         FocusBrowserAfterRouting = _config.Config.FocusBrowserAfterRouting;
         StartWithWindows = _startup.IsEnabled;
         FavoriteSitesHotkey = _config.Config.FavoriteSitesHotkey;
@@ -434,7 +430,6 @@ public partial class MainViewModel : ObservableObject
             _config.Config.DefaultBrowserArguments = DefaultBrowserArguments;
             _config.Config.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
             _config.Config.StartMinimized = StartMinimized;
-            _config.Config.ShowNotifications = ShowNotifications;
             _config.Config.FocusBrowserAfterRouting = FocusBrowserAfterRouting;
             _config.Config.StartWithWindows = StartWithWindows;
             _config.Config.FavoriteSitesHotkey = FavoriteSitesHotkey;
@@ -816,7 +811,6 @@ public partial class MainViewModel : ObservableObject
     partial void OnDefaultBrowserArgumentsChanged(string value) => HasUnsavedChanges = true;
     partial void OnMinimizeToTrayOnCloseChanged(bool value) => HasUnsavedChanges = true;
     partial void OnStartMinimizedChanged(bool value) => HasUnsavedChanges = true;
-    partial void OnShowNotificationsChanged(bool value) => HasUnsavedChanges = true;
     partial void OnFocusBrowserAfterRoutingChanged(bool value) => HasUnsavedChanges = true;
     partial void OnStartWithWindowsChanged(bool value) => HasUnsavedChanges = true;
     

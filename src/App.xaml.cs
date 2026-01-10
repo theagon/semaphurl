@@ -17,7 +17,6 @@ public partial class App : Application
     private UrlHistoryWindow? _urlHistoryWindow;
     private CancellationTokenSource? _cts;
     private IHotkeyService? _hotkeyService;
-    private IClipboardService? _clipboardService;
 
     public static App Instance => (App)Current;
     public IServiceProvider Services => _serviceProvider;
@@ -116,11 +115,6 @@ public partial class App : Application
         _hotkeyService.FavoriteSitesHotkeyPressed += OnFavoriteSitesHotkeyPressed;
         _hotkeyService.ClipboardUrlHotkeyPressed += OnClipboardUrlHotkeyPressed;
         _hotkeyService.RegisterAll(config.Config.FavoriteSitesHotkey, config.Config.ClipboardUrlHotkey);
-
-        // Start clipboard monitoring for URL detection
-        _clipboardService = _serviceProvider.GetRequiredService<IClipboardService>();
-        _clipboardService.UrlDetected += OnClipboardUrlDetected;
-        _clipboardService.StartMonitoring();
 
         // Start listening for URLs from other instances
         _cts = new CancellationTokenSource();
@@ -236,6 +230,57 @@ public partial class App : Application
     private void TrayMenu_OpenSettings_Click(object sender, RoutedEventArgs e) => ShowMainWindow();
     private void TrayMenu_Exit_Click(object sender, RoutedEventArgs e) => ExitApplication();
 
+    private void TrayContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ContextMenu menu)
+            return;
+
+        // Find the Recent URLs menu item
+        var recentMenuItem = menu.Items
+            .OfType<System.Windows.Controls.MenuItem>()
+            .FirstOrDefault(m => m.Header?.ToString() == "Recent URLs");
+
+        if (recentMenuItem == null)
+            return;
+
+        // Clear existing items
+        recentMenuItem.Items.Clear();
+
+        // Get recent URLs from history service
+        var historyService = _serviceProvider.GetRequiredService<IUrlHistoryService>();
+        var recentUrls = historyService.GetRecentUrls(5).ToList();
+
+        if (recentUrls.Count == 0)
+        {
+            var emptyItem = new System.Windows.Controls.MenuItem
+            {
+                Header = "(No recent URLs)",
+                IsEnabled = false
+            };
+            recentMenuItem.Items.Add(emptyItem);
+        }
+        else
+        {
+            foreach (var entry in recentUrls)
+            {
+                // Truncate URL for display (max 50 chars)
+                var displayUrl = entry.Url.Length > 50
+                    ? entry.Url[..47] + "..."
+                    : entry.Url;
+
+                var urlItem = new System.Windows.Controls.MenuItem
+                {
+                    Header = displayUrl,
+                    ToolTip = entry.Url
+                };
+
+                var url = entry.Url; // Capture for closure
+                urlItem.Click += (_, _) => _ = ProcessUrlAsync(url);
+                recentMenuItem.Items.Add(urlItem);
+            }
+        }
+    }
+
     private System.Windows.Controls.ContextMenu CreateTrayContextMenu()
     {
         var menu = new System.Windows.Controls.ContextMenu();
@@ -284,26 +329,6 @@ public partial class App : Application
     private void OnClipboardUrlHotkeyPressed()
     {
         Dispatcher.Invoke(HandleClipboardUrl);
-    }
-
-    private void OnClipboardUrlDetected(string url)
-    {
-        Dispatcher.Invoke(() => ShowClipboardUrlNotification(url));
-    }
-
-    private void ShowClipboardUrlNotification(string url)
-    {
-        var config = _serviceProvider.GetRequiredService<IConfigurationService>();
-        if (!config.Config.ShowNotifications)
-            return;
-
-        // Truncate URL for display
-        var displayUrl = url.Length > 60 ? url[..57] + "..." : url;
-        var hotkey = config.Config.ClipboardUrlHotkey;
-
-        _trayIcon?.ShowNotification(
-            "URL Detected",
-            $"{displayUrl}\n\nPress {hotkey} to open");
     }
 
     private void HandleClipboardUrl()
@@ -382,51 +407,9 @@ public partial class App : Application
     private async Task ProcessUrlAsync(string url)
     {
         var routing = _serviceProvider.GetRequiredService<IRoutingService>();
-        var config = _serviceProvider.GetRequiredService<IConfigurationService>();
-        var browserDiscovery = _serviceProvider.GetRequiredService<IBrowserDiscoveryService>();
-        
+
         var result = routing.Route(url);
-        var success = await routing.ExecuteRoutingAsync(result);
-
-        if (config.Config.ShowNotifications && _trayIcon != null)
-        {
-            var browserName = GetBrowserDisplayName(result.BrowserPath, browserDiscovery);
-            
-            _trayIcon.ShowNotification(
-                "URL Routed",
-                $"{result.GetRuleDescription()}\n→ {browserName}",
-                H.NotifyIcon.Core.NotificationIcon.Info);
-        }
-    }
-
-    private static string GetBrowserDisplayName(string? browserPath, IBrowserDiscoveryService browserDiscovery)
-    {
-        if (string.IsNullOrEmpty(browserPath))
-            return "System Default";
-
-        // Try to find the browser in installed browsers list
-        var installedBrowsers = browserDiscovery.GetInstalledBrowsers();
-        var browser = installedBrowsers.FirstOrDefault(b => 
-            b.ExePath.Equals(browserPath, StringComparison.OrdinalIgnoreCase));
-
-        if (browser != null)
-            return browser.Name;
-
-        // Fallback to friendly name based on exe name
-        var fileName = System.IO.Path.GetFileNameWithoutExtension(browserPath)?.ToLowerInvariant();
-        return fileName switch
-        {
-            "chrome" => "Google Chrome",
-            "msedge" => "Microsoft Edge",
-            "firefox" => "Mozilla Firefox",
-            "brave" => "Brave",
-            "opera" => "Opera",
-            "vivaldi" => "Vivaldi",
-            "browser" => "Yandex Browser",
-            "iexplore" => "Internet Explorer",
-            "safari" => "Safari",
-            _ => System.IO.Path.GetFileNameWithoutExtension(browserPath) ?? "Browser"
-        };
+        await routing.ExecuteRoutingAsync(result);
     }
 
     public void ShowMainWindow()
@@ -458,7 +441,6 @@ public partial class App : Application
     {
         _cts?.Cancel();
         _hotkeyService?.UnregisterAll();
-        _clipboardService?.StopMonitoring();
         _trayIcon?.Dispose();
         _singleInstance.Dispose();
         _serviceProvider.Dispose();

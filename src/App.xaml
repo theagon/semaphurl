@@ -41,9 +41,11 @@
                             ToolTipText="SemaphURL - Click to open settings"
                             NoLeftClickDelay="True">
                 <tb:TaskbarIcon.ContextMenu>
-                    <ContextMenu>
+                    <ContextMenu Opened="TrayContextMenu_Opened">
                         <MenuItem Header="Favorite Sites (Ctrl+Space)" Click="TrayMenu_FavoriteSites_Click" />
                         <MenuItem Header="URL History" Click="TrayMenu_UrlHistory_Click" />
+                        <Separator />
+                        <MenuItem x:Name="RecentUrlsMenuItem" Header="Recent URLs" />
                         <Separator />
                         <MenuItem Header="Open Settings" Click="TrayMenu_OpenSettings_Click" />
                         <Separator />

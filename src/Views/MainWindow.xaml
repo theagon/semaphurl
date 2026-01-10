@@ -364,18 +364,6 @@
                             <ui:CardControl Margin="0,0,0,12">
                                 <ui:CardControl.Header>
                                     <StackPanel>
-                                        <TextBlock Text="Show notifications" />
-                                        <TextBlock Text="Show tray notification when URL is routed"
-                                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                                   FontSize="12" />
-                                    </StackPanel>
-                                </ui:CardControl.Header>
-                                <ui:ToggleSwitch IsChecked="{Binding ShowNotifications}" />
-                            </ui:CardControl>
-
-                            <ui:CardControl Margin="0,0,0,12">
-                                <ui:CardControl.Header>
-                                    <StackPanel>
                                         <TextBlock Text="Switch to browser after routing" />
                                         <TextBlock Text="Automatically focus browser window when URL is opened"
                                                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"

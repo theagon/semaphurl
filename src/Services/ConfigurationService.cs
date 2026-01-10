@@ -77,7 +77,6 @@ public class ConfigurationService : IConfigurationService
         Rules = [],
         MinimizeToTrayOnClose = true,
         StartMinimized = false,
-        ShowNotifications = true,
         StartWithWindows = false,
         FavoriteSites = CreateDefaultFavoriteSites(),
         FavoriteSitesHotkey = "Ctrl+Space"

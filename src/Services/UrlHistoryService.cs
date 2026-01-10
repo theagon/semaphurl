@@ -17,16 +17,17 @@ public interface IUrlHistoryService
     Task AddEntryAsync(string url, string browserPath, string browserName, string? ruleName);
     IEnumerable<UrlHistoryEntry> GetHistoryByDomain(string domain);
     IEnumerable<UrlHistoryEntry> Search(string searchText);
+    IEnumerable<UrlHistoryEntry> GetRecentUrls(int count = 5);
     Task DeleteEntryAsync(Guid id);
     Task ClearHistoryAsync();
 }
 
 /// <summary>
-/// Service for managing URL history with 30-day retention
+/// Service for managing URL history with 7-day retention
 /// </summary>
 public class UrlHistoryService : IUrlHistoryService
 {
-    private const int RetentionDays = 30;
+    private const int RetentionDays = 7;
     
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -127,12 +128,19 @@ public class UrlHistoryService : IUrlHistoryService
             return _data.Entries.OrderByDescending(e => e.Timestamp);
 
         return _data.Entries
-            .Where(e => 
+            .Where(e =>
                 e.Url.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                 e.Domain.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                 (e.RuleName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 e.BrowserName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(e => e.Timestamp);
+    }
+
+    public IEnumerable<UrlHistoryEntry> GetRecentUrls(int count = 5)
+    {
+        return _data.Entries
+            .OrderByDescending(e => e.Timestamp)
+            .Take(count);
     }
 
     public async Task DeleteEntryAsync(Guid id)
