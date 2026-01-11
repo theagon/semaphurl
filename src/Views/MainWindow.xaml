@@ -4,6 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:vm="clr-namespace:SemaphURL.ViewModels"
         xmlns:models="clr-namespace:SemaphURL.Models"
+        xmlns:controls="clr-namespace:SemaphURL.Controls"
         Title="{Binding WindowTitle}"
         Width="950" Height="750"
         MinWidth="750" MinHeight="550"
@@ -423,9 +424,10 @@
                                                    FontSize="12" />
                                     </StackPanel>
                                 </ui:CardControl.Header>
-                                <ui:TextBox Text="{Binding FavoriteSitesHotkey, UpdateSourceTrigger=PropertyChanged}"
-                                            PlaceholderText="e.g., Ctrl+Space"
-                                            MinWidth="150" />
+                                <controls:HotkeyRecorderControl
+                                    Hotkey="{Binding FavoriteSitesHotkey, Mode=TwoWay}"
+                                    DefaultHotkey="Ctrl+Space"
+                                    MinWidth="180" />
                             </ui:CardControl>
 
                             <ui:CardControl Margin="0,0,0,12">
@@ -437,9 +439,10 @@
                                                    FontSize="12" />
                                     </StackPanel>
                                 </ui:CardControl.Header>
-                                <ui:TextBox Text="{Binding ClipboardUrlHotkey, UpdateSourceTrigger=PropertyChanged}"
-                                            PlaceholderText="e.g., Ctrl+Shift+Space"
-                                            MinWidth="150" />
+                                <controls:HotkeyRecorderControl
+                                    Hotkey="{Binding ClipboardUrlHotkey, Mode=TwoWay}"
+                                    DefaultHotkey="Ctrl+Shift+Space"
+                                    MinWidth="180" />
                             </ui:CardControl>
 
                             <TextBlock Text="Note: Changes take effect after saving."

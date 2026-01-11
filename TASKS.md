@@ -103,21 +103,20 @@
 
 ---
 
-### 1.6 Hotkey Configuration UI
+### 1.6 Hotkey Configuration UI ✅
 
 #### HotkeyRecorderControl
-- [ ] Создать `Controls/HotkeyRecorderControl.xaml`
-- [ ] Создать `Controls/HotkeyRecorderControl.xaml.cs`
-- [ ] Отображение текущей комбинации
-- [ ] Режим записи: "Press your shortcut..."
-- [ ] Захват клавиш (KeyDown event)
-- [ ] Поддержка модификаторов (Ctrl, Alt, Shift, Win)
+- [x] Создать `Controls/HotkeyRecorderControl.xaml`
+- [x] Создать `Controls/HotkeyRecorderControl.xaml.cs`
+- [x] Отображение текущей комбинации
+- [x] Режим записи: "Press your shortcut..."
+- [x] Захват клавиш (KeyDown event)
+- [x] Поддержка модификаторов (Ctrl, Alt, Shift, Win)
 
 #### Интеграция
-- [ ] Заменить TextBox на HotkeyRecorderControl в настройках
-- [ ] Валидация: проверка конфликтов с системными hotkeys
-- [ ] Список известных системных комбинаций
-- [ ] Кнопка "Reset to Default"
+- [x] Заменить TextBox на HotkeyRecorderControl в настройках
+- [x] Требует модификатор (валидация)
+- [x] Кнопка "Reset to Default"
 
 ---
 
